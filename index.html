@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Future Grammar Grand Prix - A2 Grammar Game</title>
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --primary-dark: #0d47a1;
+      --accent: #ff9800;
+      --success: #2e7d32;
+      --danger: #c62828;
+      --bg: #121212;
+      --card-bg: #1e1e1e;
+      --text: #ffffff;
+      --text-muted: #b0bec5;
+      --border: #333333;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation / HUD */
+    header {
+      background: rgba(30, 30, 30, 0.95);
+      border-bottom: 2px solid var(--border);
+      padding: 8px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .title-group h1 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      background: linear-gradient(45deg, #ff9800, #f44336);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hud-stats {
+      display: flex;
+      gap: 12px;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+
+    .hud-card {
+      background: #2a2a2a;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .hud-card span.value {
+      color: var(--accent);
+    }
+
+    /* Main Container */
+    #game-container {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Canvas Area */
+    #canvas-wrapper {
+      position: relative;
+      width: 100%;
+      height: 48%;
+      background: #333;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Speedometer & Nitro Overlay on Canvas */
+    .dashboard-overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .speed-gauge {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid #ff9800;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: #ff9800;
+      font-weight: bold;
+    }
+
+    .nitro-gauge {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid #00bcd4;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: #00bcd4;
+      font-weight: bold;
+    }
+
+    /* Control Panel / Interactive Quiz Area */
+    #interaction-panel {
+      height: 52%;
+      background: var(--card-bg);
+      border-top: 3px solid var(--primary);
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 10px;
+      box-shadow: 0 -6px 16px rgba(0,0,0,0.6);
+      overflow-y: auto;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .badge {
+      background: var(--primary-dark);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .timer-badge {
+      background: #d32f2f;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+
+    .question-box {
+      background: #282828;
+      border: 1px solid #3d3d3d;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .question-box u {
+      text-decoration-color: var(--accent);
+      text-underline-offset: 4px;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .btn-option {
+      background: #2a2a2a;
+      border: 2px solid #444;
+      color: #fff;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-option:active {
+      transform: scale(0.98);
+    }
+
+    .btn-option.correct {
+      background: var(--success) !important;
+      border-color: #4caf50 !important;
+      color: #fff;
+    }
+
+    .btn-option.wrong {
+      background: var(--danger) !important;
+      border-color: #f44336 !important;
+      color: #fff;
+    }
+
+    /* Rules Modal & Screens */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .modal-card {
+      background: #222;
+      border: 2px solid var(--primary);
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+    }
+
+    .modal-card h2 {
+      color: var(--accent);
+      margin-bottom: 12px;
+      font-size: 1.4rem;
+    }
+
+    .modal-card p {
+      font-size: 0.88rem;
+      color: #ccc;
+      line-height: 1.4;
+      margin-bottom: 14px;
+    }
+
+    .rule-box {
+      background: #111;
+      border-left: 4px solid var(--accent);
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 0.8rem;
+      margin-bottom: 16px;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .btn-action {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 25px;
+      cursor: pointer;
+      width: 100%;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      transition: transform 0.1s;
+    }
+
+    .btn-action:active {
+      transform: scale(0.96);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Feedback Banner */
+    .feedback-banner {
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      text-align: center;
+      animation: fadeIn 0.2s ease-in;
+    }
+
+    .feedback-banner.success {
+      background: rgba(46, 125, 50, 0.2);
+      border: 1px solid var(--success);
+      color: #81c784;
+    }
+
+    .feedback-banner.danger {
+      background: rgba(198, 40, 40, 0.2);
+      border: 1px solid var(--danger);
+      color: #e57373;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="title-group">
+      <h1>Grand Prix A2</h1>
+    </div>
+    <div class="hud-stats">
+      <div class="hud-card">
+        <span>LAP:</span>
+        <span id="hud-lap" class="value">1/3</span>
+      </div>
+      <div class="hud-card">
+        <span>SCORE:</span>
+        <span id="hud-score" class="value">0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Game Main Viewport -->
+  <div id="game-container">
+    
+    <!-- Canvas Driving Area -->
+    <div id="canvas-wrapper">
+      <canvas id="raceCanvas"></canvas>
+      <div class="dashboard-overlay">
+        <div id="speedometer" class="speed-gauge">0 MPH</div>
+        <div id="nitro-status" class="nitro-gauge">NITRO: READY</div>
+      </div>
+    </div>
+
+    <!-- Quiz & Controls Panel -->
+    <div id="interaction-panel">
+      <div class="card-header">
+        <span class="badge" id="clause-type-badge">TIME CLAUSE</span>
+        <span class="timer-badge" id="quiz-timer">⏱️ 15s</span>
+      </div>
+
+      <div class="question-box" id="question-text">
+        Loading challenge...
+      </div>
+
+      <div id="feedback-container"></div>
+
+      <div class="options-grid" id="options-container">
+        <!-- Dynamic Answer Options -->
+      </div>
+    </div>
+
+    <!-- Start / Tutorial Screen Overlay -->
+    <div id="start-screen" class="modal-overlay">
+      <div class="modal-card">
+        <h2>🏎️ FUTURE GRAND PRIX</h2>
+        <p>Master <strong>Unit 2.9 (Future + Time / If Clauses)</strong> to power your race car and beat your rival!</p>
+        
+        <div class="rule-box">
+          <strong>GRAMMAR RULES:</strong><br>
+          • <em>Time/If Clause</em>: Use <u>SIMPLE PRESENT</u> (e.g., <em>When I arrive... / If it rains...</em>)<br>
+          • <em>Main Clause</em>: Use <u>FUTURE</u> (e.g., <em>...I will call you / ...we're going to stay home</em>)
+        </div>
+
+        <button class="btn-action" id="start-btn">START RACE 🚀</button>
+      </div>
+    </div>
+
+    <!-- Game Over Screen Overlay -->
+    <div id="game-over-screen" class="modal-overlay hidden">
+      <div class="modal-card">
+        <h2 id="finish-title">RACE FINISHED!</h2>
+        <p id="finish-msg">Great driving! Here are your results:</p>
+        
+        <div style="margin-bottom: 16px; font-size: 1.1rem; font-weight: bold; color: var(--accent);">
+          Final Score: <span id="final-score">0</span>
+        </div>
+
+        <button class="btn-action" id="restart-btn">PLAY AGAIN 🔄</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /* --- GRAMMAR DATABASE (UNIT 2.9 - A2 LEVEL) --- */
+    const questionBank = [
+      {
+        type: "TIME CLAUSE (WHEN)",
+        sentence: "When I ______ (graduate) next month, I ______ (start) a new job.",
+        options: [
+          { text: "graduate / am going to start", correct: true, explain: "Correct! Use Simple Present after 'When' and Future ('am going to') in the main clause." },
+          { text: "will graduate / start", correct: false, explain: "Incorrect! Never use 'will' inside the time clause itself." },
+          { text: "graduated / will start", correct: false, explain: "Incorrect! Use Simple Present for future time clauses." }
+        ]
+      },
+      {
+        type: "IF CLAUSE (CONDITIONAL)",
+        sentence: "If it ______ (rain) tomorrow, we ______ (cancel) the picnic.",
+        options: [
+          { text: "rains / will cancel", correct: true, explain: "Correct! Simple present ('rains') in the IF clause, future ('will cancel') in main clause." },
+          { text: "will rain / cancel", correct: false, explain: "Incorrect! Do not use 'will' in the IF clause." },
+          { text: "is raining / cancel", correct: false, explain: "Incorrect! Standard condition uses Simple Present." }
+        ]
+      },
+      {
+        type: "TIME CLAUSE (AS SOON AS)",
+        sentence: "As soon as the plane ______ (land), he ______ his family.",
+        options: [
+          { text: "lands / will call", correct: true, explain: "Correct! 'Lands' (simple present) + 'will call' (future)." },
+          { text: "will land / calls", correct: false, explain: "Incorrect! 'As soon as' requires simple present." },
+          { text: "is landing / call", correct: false, explain: "Incorrect! Conjugation mismatch." }
+        ]
+      },
+      {
+        type: "MAIN CLAUSE FIRST",
+        sentence: "They ______ (visit) the museum before they ______ (leave) town.",
+        options: [
+          { text: "are going to visit / leave", correct: true, explain: "Correct! Main clause comes first in Future form, time clause uses Simple Present." },
+          { text: "visit / will leave", correct: false, explain: "Incorrect! Main clause needs Future tense." },
+          { text: "will visit / will leave", correct: false, explain: "Incorrect! Don't use 'will' in both clauses." }
+        ]
+      },
+      {
+        type: "PRESENT CONTINUOUS FOR ARRANGEMENTS",
+        sentence: "What ______ (do) when the meeting ______ (finish) on Friday?",
+        options: [
+          { text: "are you doing / finishes", correct: true, explain: "Correct! Present continuous for future plans + Simple Present after 'when'." },
+          { text: "will you do / will finish", correct: false, explain: "Incorrect! Time clause cannot take 'will'." },
+          { text: "do you do / is finishing", correct: false, explain: "Incorrect! Unnatural verb form combination." }
+        ]
+      },
+      {
+        type: "IF CLAUSE (NEGATION)",
+        sentence: "If he ______ (not / study), he ______ the exam.",
+        options: [
+          { text: "doesn't study / won't pass", correct: true, explain: "Correct! 'doesn't study' (Simple Present negative) + 'won't pass' (Future negative)." },
+          { text: "won't study / doesn't pass", correct: false, explain: "Incorrect! Don't put 'won't' in the IF clause." },
+          { text: "isn't studying / isn't passing", correct: false, explain: "Incorrect! Use simple present for conditional zero/first patterns." }
+        ]
+      },
+      {
+        type: "TIME CLAUSE (AFTER)",
+        sentence: "After class ______ (be) over, I ______ my grandfather.",
+        options: [
+          { text: "is / am going to visit", correct: true, explain: "Correct! 'is' (Simple Present) + 'am going to visit' (Future plan)." },
+          { text: "will be / visit", correct: false, explain: "Incorrect! No 'will' after 'after'." },
+          { text: "was / will visit", correct: false, explain: "Incorrect! Class is in the future, not past." }
+        ]
+      }
+    ];
+
+    /* --- GAME ENGINE STATE --- */
+    let canvas, ctx;
+    let activeQueue = [];
+    let currentQuestionIdx = 0;
+    let score = 0;
+    let currentLap = 1;
+    const maxLaps = 3;
+    let timerInterval = null;
+    let timeLeft = 15;
+
+    // Physics & Car Parameters
+    let playerX = 0.5;
+    let playerSpeed = 0;
+    let targetSpeed = 40;
+    let rivalX = 0.5;
+    let rivalDistance = -20;
+    let nitroActive = false;
+    let nitroTimer = 0;
+    let roadOffset = 0;
+
+    // Audio Context Setup (Web Audio API)
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'correct') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } else if (type === 'wrong') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(110, audioCtx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+      } else if (type === 'nitro') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+      }
+    }
+
+    /* --- DOM ELEMENTS --- */
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const startBtn = document.getElementById('start-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const hudScore = document.getElementById('hud-score');
+    const hudLap = document.getElementById('hud-lap');
+    const speedometer = document.getElementById('speedometer');
+    const nitroStatus = document.getElementById('nitro-status');
+    const questionText = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const clauseBadge = document.getElementById('clause-type-badge');
+    const quizTimer = document.getElementById('quiz-timer');
+    const feedbackContainer = document.getElementById('feedback-container');
+
+    /* --- SHUFFLE HELPER (FISHER-YATES) --- */
+    function shuffleArray(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    /* --- INITIALIZATION --- */
+    window.addEventListener('load', () => {
+      canvas = document.getElementById('raceCanvas');
+      ctx = canvas.getContext('2d');
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      startBtn.addEventListener('click', startGame);
+      restartBtn.addEventListener('click', startGame);
+
+      requestAnimationFrame(gameLoop);
+    });
+
+    function resizeCanvas() {
+      const wrapper = document.getElementById('canvas-wrapper');
+      canvas.width = wrapper.clientWidth;
+      canvas.height = wrapper.clientHeight;
+    }
+
+    function startGame() {
+      initAudio();
+      startScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+
+      score = 0;
+      currentLap = 1;
+      currentQuestionIdx = 0;
+      playerSpeed = 30;
+      targetSpeed = 45;
+      rivalDistance = -30;
+      nitroActive = false;
+
+      // Shuffle question order and options for the session
+      activeQueue = shuffleArray(questionBank).map(q => ({
+        ...q,
+        shuffledOptions: shuffleArray(q.options)
+      }));
+
+      updateHUD();
+      loadQuestion();
+    }
+
+    /* --- QUIZ LOGIC --- */
+    function loadQuestion() {
+      feedbackContainer.innerHTML = '';
+      clearInterval(timerInterval);
+      timeLeft = 15;
+      updateTimerDisplay();
+
+      // Loop through queue cleanly if questions wrap around
+      if (currentQuestionIdx >= activeQueue.length) {
+        activeQueue = shuffleArray(questionBank).map(q => ({
+          ...q,
+          shuffledOptions: shuffleArray(q.options)
+        }));
+        currentQuestionIdx = 0;
+      }
+
+      const q = activeQueue[currentQuestionIdx];
+      clauseBadge.textContent = q.type;
+      questionText.innerHTML = q.sentence.replace('______', '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>');
+
+      optionsContainer.innerHTML = '';
+      q.shuffledOptions.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-option';
+        btn.innerHTML = `<span>${String.fromCharCode(97 + idx)}) ${opt.text}</span>`;
+        btn.addEventListener('click', () => handleAnswer(opt, btn));
+        optionsContainer.appendChild(btn);
+      });
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          handleTimeout();
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      quizTimer.textContent = `⏱️ ${timeLeft}s`;
+    }
+
+    function handleAnswer(selectedOpt, btnElement) {
+      clearInterval(timerInterval);
+      const allBtns = optionsContainer.querySelectorAll('.btn-option');
+      allBtns.forEach(b => b.style.pointerEvents = 'none');
+
+      if (selectedOpt.correct) {
+        btnElement.classList.add('correct');
+        playSound('correct');
+        playSound('nitro');
+        
+        score += 150 + (timeLeft * 10);
+        triggerNitro();
+
+        showFeedback(selectedOpt.explain, true);
+      } else {
+        btnElement.classList.add('wrong');
+        playSound('wrong');
+        
+        // Highlight correct option as well for learning
+        const q = activeQueue[currentQuestionIdx];
+        allBtns.forEach((b, i) => {
+          if (q.shuffledOptions[i].correct) {
+            b.classList.add('correct');
+          }
+        });
+
+        // Slow down car
+        targetSpeed = Math.max(20, targetSpeed - 15);
+        rivalDistance += 25; // Rival pulls ahead
+
+        showFeedback(selectedOpt.explain, false);
+      }
+
+      updateHUD();
+
+      setTimeout(() => {
+        currentQuestionIdx++;
+        if (currentQuestionIdx % 3 === 0 && currentLap < maxLaps) {
+          currentLap++;
+          updateHUD();
+        }
+
+        if (currentLap > maxLaps) {
+          endGame();
+        } else {
+          loadQuestion();
+        }
+      }, 2200);
+    }
+
+    function handleTimeout() {
+      showFeedback("Time's up! Speed decreased.", false);
+      playSound('wrong');
+      targetSpeed = Math.max(15, targetSpeed - 20);
+      rivalDistance += 30;
+
+      setTimeout(() => {
+        currentQuestionIdx++;
+        loadQuestion();
+      }, 2000);
+    }
+
+    function showFeedback(text, isSuccess) {
+      feedbackContainer.innerHTML = `
+        <div class="feedback-banner ${isSuccess ? 'success' : 'danger'}">
+          ${text}
+        </div>
+      `;
+    }
+
+    function triggerNitro() {
+      nitroActive = true;
+      nitroTimer = 100;
+      targetSpeed = 110;
+      rivalDistance -= 35;
+      nitroStatus.textContent = "NITRO: ACTIVE 🔥";
+      nitroStatus.style.borderColor = "#ff9800";
+      nitroStatus.style.color = "#ff9800";
+    }
+
+    function updateHUD() {
+      hudScore.textContent = score;
+      hudLap.textContent = `${Math.min(currentLap, maxLaps)}/${maxLaps}`;
+    }
+
+    function endGame() {
+      clearInterval(timerInterval);
+      document.getElementById('final-score').textContent = score;
+      
+      const finishTitle = document.getElementById('finish-title');
+      const finishMsg = document.getElementById('finish-msg');
+
+      if (rivalDistance < 0) {
+        finishTitle.textContent = "🏆 1ST PLACE! YOU WON!";
+        finishMsg.textContent = "Excellent driving and perfect grammar skills!";
+      } else {
+        finishTitle.textContent = "🏁 RACE FINISHED - 2ND PLACE";
+        finishMsg.textContent = "Good effort! Keep practicing your time and if clauses!";
+      }
+
+      gameOverScreen.classList.remove('hidden');
+    }
+
+    /* --- CANVAS ANIMATION & RACING GRAPHICS --- */
+    function gameLoop() {
+      updatePhysics();
+      renderRace();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function updatePhysics() {
+      playerSpeed += (targetSpeed - playerSpeed) * 0.05;
+      
+      if (nitroActive) {
+        nitroTimer--;
+        if (nitroTimer <= 0) {
+          nitroActive = false;
+          targetSpeed = 45;
+          nitroStatus.textContent = "NITRO: READY";
+          nitroStatus.style.borderColor = "#00bcd4";
+          nitroStatus.style.color = "#00bcd4";
+        }
+      }
+
+      speedometer.textContent = `${Math.round(playerSpeed)} MPH`;
+      roadOffset += playerSpeed * 0.15;
+      if (roadOffset > 40) roadOffset -= 40;
+
+      rivalX = 0.5 + Math.sin(Date.now() * 0.002) * 0.15;
+    }
+
+    function renderRace() {
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // Sky Background
+      const skyGradient = ctx.createLinearGradient(0, 0, 0, h * 0.4);
+      skyGradient.addColorStop(0, '#0f2027');
+      skyGradient.addColorStop(1, '#203a43');
+      ctx.fillStyle = skyGradient;
+      ctx.fillRect(0, 0, w, h * 0.4);
+
+      // Sun/Horizon
+      ctx.fillStyle = '#ff9800';
+      ctx.beginPath();
+      ctx.arc(w / 2, h * 0.4, 25, Math.PI, 0, false);
+      ctx.fill();
+
+      // Grass
+      ctx.fillStyle = '#1b4332';
+      ctx.fillRect(0, h * 0.4, w, h * 0.6);
+
+      // Road Perspective
+      const horizonY = h * 0.4;
+      const roadTopW = w * 0.15;
+      const roadBottomW = w * 0.85;
+
+      ctx.fillStyle = '#2c3e50';
+      ctx.beginPath();
+      ctx.moveTo(w / 2 - roadTopW / 2, horizonY);
+      ctx.lineTo(w / 2 + roadTopW / 2, horizonY);
+      ctx.lineTo(w / 2 + roadBottomW / 2, h);
+      ctx.lineTo(w / 2 - roadBottomW / 2, h);
+      ctx.closePath();
+      ctx.fill();
+
+      // Road Striping (Center Line)
+      ctx.strokeStyle = '#f1c40f';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([15, 15]);
+      ctx.lineDashOffset = -roadOffset;
+      ctx.beginPath();
+      ctx.moveTo(w / 2, horizonY);
+      ctx.lineTo(w / 2, h);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Curbs
+      drawCurbs(w, h, horizonY, roadTopW, roadBottomW);
+
+      // Draw Rival & Player Cars
+      drawRivalCar(w, h, horizonY);
+      drawPlayerCar(w, h);
+    }
+
+    function drawCurbs(w, h, horizonY, roadTopW, roadBottomW) {
+      const numSegments = 10;
+      for (let i = 0; i < numSegments; i++) {
+        const y1 = horizonY + (h - horizonY) * (i / numSegments);
+        const y2 = horizonY + (h - horizonY) * ((i + 1) / numSegments);
+        
+        const w1 = roadTopW + (roadBottomW - roadTopW) * (i / numSegments);
+        const w2 = roadTopW + (roadBottomW - roadTopW) * ((i + 1) / numSegments);
+
+        const color = (Math.floor(i + roadOffset * 0.1) % 2 === 0) ? '#e74c3c' : '#ecf0f1';
+
+        // Left Curb
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(w / 2 - w1 / 2, y1);
+        ctx.lineTo(w / 2 - w1 / 2 - 8, y1);
+        ctx.lineTo(w / 2 - w2 / 2 - 12, y2);
+        ctx.lineTo(w / 2 - w2 / 2, y2);
+        ctx.fill();
+
+        // Right Curb
+        ctx.beginPath();
+        ctx.moveTo(w / 2 + w1 / 2, y1);
+        ctx.lineTo(w / 2 + w1 / 2 + 8, y1);
+        ctx.lineTo(w / 2 + w2 / 2 + 12, y2);
+        ctx.lineTo(w / 2 + w2 / 2, y2);
+        ctx.fill();
+      }
+    }
+
+    function drawPlayerCar(w, h) {
+      const carW = 70;
+      const carH = 45;
+      const carX = w / 2 - carW / 2;
+      const carY = h - carH - 15;
+
+      if (nitroActive) {
+        ctx.fillStyle = '#ff5722';
+        ctx.beginPath();
+        ctx.moveTo(carX + 15, carY + carH);
+        ctx.lineTo(carX + carW / 2, carY + carH + 25 + Math.random() * 10);
+        ctx.lineTo(carX + carW - 15, carY + carH);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffeb3b';
+        ctx.beginPath();
+        ctx.moveTo(carX + 25, carY + carH);
+        ctx.lineTo(carX + carW / 2, carY + carH + 15 + Math.random() * 5);
+        ctx.lineTo(carX + carW - 25, carY + carH);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#111';
+      ctx.fillRect(carX - 4, carY + 8, 8, 14);
+      ctx.fillRect(carX + carW - 4, carY + 8, 8, 14);
+      ctx.fillRect(carX - 5, carY + carH - 16, 9, 14);
+      ctx.fillRect(carX + carW - 4, carY + carH - 16, 9, 14);
+
+      ctx.fillStyle = '#1e88e5';
+      ctx.beginPath();
+      ctx.roundRect(carX, carY, carW, carH, 8);
+      ctx.fill();
+
+      ctx.fillStyle = '#0d47a1';
+      ctx.beginPath();
+      ctx.roundRect(carX + 10, carY + 10, carW - 20, carH - 18, 4);
+      ctx.fill();
+
+      ctx.fillStyle = '#ff1744';
+      ctx.fillRect(carX + 6, carY + carH - 4, 12, 3);
+      ctx.fillRect(carX + carW - 18, carY + carH - 4, 12, 3);
+    }
+
+    function drawRivalCar(w, h, horizonY) {
+      if (rivalDistance > 40 || rivalDistance < -80) return;
+
+      const scale = 1 - (rivalDistance / -100);
+      const clampedScale = Math.max(0.2, Math.min(1.2, scale));
+
+      const carW = 60 * clampedScale;
+      const carH = 38 * clampedScale;
+
+      const screenY = (h - 60) + (rivalDistance * 2.5);
+      if (screenY < horizonY || screenY > h) return;
+
+      const screenX = (w / 2) + ((rivalX - 0.5) * w * clampedScale);
+
+      ctx.fillStyle = '#ffb300';
+      ctx.beginPath();
+      ctx.roundRect(screenX - carW / 2, screenY - carH, carW, carH, 6 * clampedScale);
+      ctx.fill();
+
+      ctx.fillStyle = '#f57f17';
+      ctx.beginPath();
+      ctx.roundRect(screenX - carW / 3, screenY - carH + (6 * clampedScale), carW * 0.66, carH * 0.5, 3);
+      ctx.fill();
+    }
+  </script>
+</body>
+</html>
